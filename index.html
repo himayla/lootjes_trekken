@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Lootjes trekken</title>
+</head>
+<body>
+  <h2>Enter names (comma separated)</h2>
+  <textarea id="names" rows="6" cols="40"></textarea><br>
+  <button onclick="generate()">Lootjes trekken</button>
+
+  <div id="links"></div>
+
+  <script>
+    function shuffle(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function generate() {
+      const raw = document.getElementById("names").value.trim();
+      if (!raw) return alert("Enter some names");
+      const names = raw.split(",").map(n => n.trim()).filter(n => n);
+      if (names.length < 2) return alert("Need at least 2 names");
+
+      const recipients = shuffle([...names]);
+      const draws = {};
+      for (let i = 0; i < names.length; i++) {
+        draws[names[i]] = recipients[(i + 1) % names.length];
+      }
+
+      document.getElementById("links").innerHTML = "<h3>Share these links</h3>";
+
+      Object.keys(draws).forEach(n => {
+        const token = btoa(n + ":" + draws[n]);
+        const link = `${location.href.split("?")[0]}?d=${token}`;
+        const div = document.createElement("div");
+        div.innerHTML = `<strong>${n}</strong>: <a href="${link}">${link}</a>`;
+        document.getElementById("links").appendChild(div);
+      });
+    }
+
+    function showDraw() {
+      const params = new URLSearchParams(location.search);
+      if (!params.has("d")) return;
+      const token = params.get("d");
+      try {
+        const [giver, receiver] = atob(token).split(":");
+        document.body.innerHTML = `<h1>Hi ${giver}</h1><p>Your draw is: <strong>${receiver}</strong></p>`;
+      } catch {
+        document.body.innerHTML = "<p>Invalid link</p>";
+      }
+    }
+
+    showDraw();
+  </script>
+</body>
+</html>
