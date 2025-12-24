@@ -21,11 +21,9 @@
     id="input"
     rows="8"
     cols="50"
-    placeholder="Kaas | 12-03-1990 
-Komkommer | 05-11-1988"
+    placeholder="Jan | 12-03-1990
+Piet | 05-11-1988"
   ></textarea>
-
-  <br><br>
 
   <button onclick="generate()">Lootjes trekken</button>
 
@@ -43,6 +41,41 @@ Komkommer | 05-11-1988"
       return a;
     }
 
+    // Create a recipients list such that no participant gets themselves.
+    function createRecipients(participants) {
+      const maxAttempts = 10000;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const recipients = shuffle([...participants]);
+        const ok = participants.every((p, i) => recipients[i] !== p);
+
+        if (ok) {
+          return recipients;
+        }
+      }
+
+      throw new Error("Kon geen geldige trekking maken. Probeer opnieuw.");
+    }
+
+    function parseParticipants(raw) {
+      return raw.split("\n").map(line => {
+        const parts = line.split("|").map(p => p.trim());
+
+        if (parts.length !== 2) {
+          throw new Error("Elke regel moet 'Naam | Verjaardag' bevatten");
+        }
+
+        if (!parts[0] || !parts[1]) {
+          throw new Error("Naam en verjaardag mogen niet leeg zijn");
+        }
+
+        return {
+          name: parts[0],
+          birthday: parts[1]
+        };
+      });
+    }
+
     function generate() {
       const raw = document.getElementById("input").value.trim();
 
@@ -51,32 +84,33 @@ Komkommer | 05-11-1988"
         return;
       }
 
-      const participants = raw.split("\n").map(line => {
-        const parts = line.split("|").map(p => p.trim());
-
-        if (parts.length !== 2) {
-          throw new Error("Elke regel moet 'Naam | Verjaardag' bevatten");
-        }
-
-        return {
-          name: parts[0],
-          birthday: parts[1]
-        };
-      });
+      let participants;
+      try {
+        participants = parseParticipants(raw);
+      } catch (e) {
+        alert(e.message);
+        return;
+      }
 
       if (participants.length < 2) {
         alert("Minimaal 2 deelnemers nodig");
         return;
       }
 
-      const shuffled = shuffle([...participants]);
+      let recipients;
+      try {
+        recipients = createRecipients(participants);
+      } catch (e) {
+        alert(e.message);
+        return;
+      }
 
       const linksDiv = document.getElementById("links");
       linksDiv.innerHTML = "<h3>Deel deze links (één per persoon)</h3>";
 
       for (let i = 0; i < participants.length; i++) {
         const giver = participants[i];
-        const receiver = shuffled[(i + 1) % shuffled.length];
+        const receiver = recipients[i];
 
         const payload = {
           giver: giver.name,
@@ -92,7 +126,6 @@ Komkommer | 05-11-1988"
 
         const div = document.createElement("div");
         div.innerHTML = `<strong>${giver.name}</strong>: <a href="${link}">${link}</a>`;
-
         linksDiv.appendChild(div);
       }
     }
